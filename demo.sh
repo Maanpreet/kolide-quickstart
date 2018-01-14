@@ -24,7 +24,7 @@ function initialize_data() {
 
 # Generate a base64 encoded random string with length provided in $1
 function generate_random() {
-    docker run --rm --entrypoint sh kolide/openssl -c "cat /dev/random | base64 | head -c $1"
+    docker run --sysctl net.ipv6.conf.all.disable_ipv6=1 --rm --entrypoint sh kolide/openssl -c "cat /dev/random | base64 | head -c $1"
 }
 
 function write_config_file() {
@@ -159,11 +159,11 @@ kolide_container_ip="$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.
 }
 
 function get_cn() {
-    docker run --rm -v $(pwd):/certs kolide/openssl x509 -noout -subject -in /certs/server.crt | sed -e 's/^subject.*CN=\([a-zA-Z0-9\.\-]*\).*$/\1/'
+    docker run --sysctl net.ipv6.conf.all.disable_ipv6=1 --rm -v $(pwd):/certs kolide/openssl x509 -noout -subject -in /certs/server.crt | sed -e 's/^subject.*CN=\([a-zA-Z0-9\.\-]*\).*$/\1/'
 }
 
 function perform_setup() {
-    out=$(docker run --rm -it --network=$(compose_network) --entrypoint curl kolide/openssl -k https://kolide:8412/api/v1/setup --data \
+    out=$(docker run --sysctl net.ipv6.conf.all.disable_ipv6=1 --rm -it --network=$(compose_network) --entrypoint curl kolide/openssl -k https://kolide:8412/api/v1/setup --data \
            '{"kolide_server_url":"https://kolide:8412","org_info":{"org_name":"KolideQuick"},"admin":{"admin":true,"email":"quickstart@kolide.com","password":"admin123#","password_confirmation":"admin123#","username":"admin"}}')
     if echo $out | grep -i error; then
         echo "Error: Config upload failed: $out. Exiting." >&2
@@ -172,7 +172,7 @@ function perform_setup() {
 }
 
 function get_enroll_secret() {
-    enroll_secret=$(docker run --rm -it --network=$(compose_network) mysql:5.7 mysql -h mysql -u kolide --password=kolide -e 'select osquery_enroll_secret from app_configs' --batch kolide | tail -1)
+    enroll_secret=$(docker run --sysctl net.ipv6.conf.all.disable_ipv6=1 --rm -it --network=$(compose_network) mysql:5.7 mysql -h mysql -u kolide --password=kolide -e 'select osquery_enroll_secret from app_configs' --batch kolide | tail -1)
     if [ $? -ne 0 ] || [ -z $enroll_secret ]; then
         echo "Error: Could not retrieve enroll secret. Exiting." >&2
         exit 1
@@ -184,7 +184,7 @@ function wait_fleet() {
     printf 'Waiting for Fleet server to accept connections...'
     for i in $(seq 1 50);
     do
-        docker run --rm -it --network=$(compose_network) --entrypoint curl kolide/openssl -k -I https://fleet:8412 > /dev/null
+        docker run --sysctl net.ipv6.conf.all.disable_ipv6=1 --rm -it --network=$(compose_network) --entrypoint curl kolide/openssl -k -I https://fleet:8412 > /dev/null
         if [ $? -eq 0 ]; then
             echo
             return
@@ -200,7 +200,7 @@ function wait_mysql() {
 
     for i in $(seq 1 50);
     do
-        docker run --rm -it --network=$(compose_network) mysql:5.7 mysqladmin ping -h mysql -u kolide --password=kolide > /dev/null
+        docker run --sysctl net.ipv6.conf.all.disable_ipv6=1 --rm -it --network=$(compose_network) mysql:5.7 mysqladmin ping -h mysql -u kolide --password=kolide > /dev/null
         if [ $? -eq 0 ]; then
             echo
             return
@@ -234,10 +234,10 @@ function up() {
         CN=${CN:-$DEFAULT_CN}
 
         # Create self-signed SSL cert with no passphrase
-        docker run --rm -v $(pwd):/certs kolide/openssl genrsa -out /certs/server.key 2048
-        docker run --rm -v $(pwd):/certs kolide/openssl rsa -in /certs/server.key -out /certs/server.key
-        docker run --rm -v $(pwd):/certs kolide/openssl req -sha256 -new -key /certs/server.key -out /certs/server.csr -subj "/CN=$CN"
-        docker run --rm -v $(pwd):/certs kolide/openssl x509 -req -sha256 -days 365 -in /certs/server.csr -signkey /certs/server.key -out /certs/server.crt
+        docker run --sysctl net.ipv6.conf.all.disable_ipv6=1 --rm -v $(pwd):/certs kolide/openssl genrsa -out /certs/server.key 2048
+        docker run --sysctl net.ipv6.conf.all.disable_ipv6=1 --rm -v $(pwd):/certs kolide/openssl rsa -in /certs/server.key -out /certs/server.key
+        docker run --sysctl net.ipv6.conf.all.disable_ipv6=1 --rm -v $(pwd):/certs kolide/openssl req -sha256 -new -key /certs/server.key -out /certs/server.csr -subj "/CN=$CN"
+        docker run --sysctl net.ipv6.conf.all.disable_ipv6=1 --rm -v $(pwd):/certs kolide/openssl x509 -req -sha256 -days 365 -in /certs/server.csr -signkey /certs/server.key -out /certs/server.crt
         rm server.csr
     else
         CN=$(get_cn)
